@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Prompt Engineering Lab - An NLP tool that analyzes, scores, improves, and compares your LLM prompts using AI. Master the art of prompt engineering.">
+    <title>Prompt Engineering Lab — AI Prompt Analyzer &amp; Optimizer</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+    <!-- Application Styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- ========== LOADING OVERLAY ========== -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+        <p class="loading-text" id="loading-text">Analyzing your prompt...</p>
+    </div>
+
+    <!-- ========== TOAST CONTAINER ========== -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ========== HEADER ========== -->
+    <header>
+        <div class="container">
+            <h1><span class="text-gradient">🧪 Prompt Engineering Lab</span></h1>
+            <p class="subtitle">Analyze, score, improve, and compare your LLM prompts with AI</p>
+        </div>
+    </header>
+
+    <!-- ========== API KEY SETUP ========== -->
+    <div id="api-key-section">
+        <div class="container" style="display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+            <label for="api-key-input" style="font-weight: 500; color: var(--text-secondary);">🔑 Gemini API Key:</label>
+            <input
+                type="password"
+                id="api-key-input"
+                class="api-key-input"
+                placeholder="Paste your API key here..."
+                autocomplete="off"
+            >
+            <button id="api-key-save-btn" class="btn btn-primary" style="padding: 0.5rem 1.25rem; font-size: 0.9rem;">
+                Save Key
+            </button>
+            <span id="api-key-status" style="font-size: 0.85rem; color: var(--danger);">Not configured</span>
+        </div>
+    </div>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <main>
+        <div class="container">
+
+            <!-- ===== PROMPT INPUT SECTION ===== -->
+            <section id="input-section" class="glass-panel">
+                <h2 style="font-size: 1.4rem; margin-bottom: 1rem;">✍️ Enter Your Prompt</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                    Paste any prompt you'd use with an LLM. We'll analyze its quality across 6 key dimensions and show you how to improve it.
+                </p>
+
+                <div class="textarea-wrapper">
+                    <textarea
+                        id="prompt-textarea"
+                        placeholder="Example: Tell me about machine learning&#10;&#10;Or try something more complex:&#10;You are a senior data scientist. Explain the differences between supervised and unsupervised learning to a group of business executives. Use analogies they'd understand. Keep it under 300 words. Format as bullet points."
+                        spellcheck="true"
+                    ></textarea>
+                    <span class="char-counter" id="char-counter">0 characters</span>
+                </div>
+
+                <div class="input-actions">
+                    <button id="clear-btn" class="btn btn-secondary">Clear</button>
+                    <button id="history-btn" class="btn btn-secondary">📜 History</button>
+                    <button id="demo-btn" class="btn btn-secondary" style="border-color: var(--accent-cyan-dark); color: var(--accent-cyan-light);">🚀 Try Demo</button>
+                    <button id="analyze-btn" class="btn btn-primary">🔬 Analyze Prompt</button>
+                </div>
+            </section>
+
+            <!-- ===== ANALYSIS RESULTS SECTION ===== -->
+            <section id="results-section" class="hidden">
+
+                <!-- Dashboard Grid: Score + Chart on left, Dimensions on right -->
+                <div class="dashboard-grid">
+
+                    <!-- Left Column: Score Badge + Radar Chart -->
+                    <div class="score-overview glass-panel">
+                        <div class="score-badge">
+                            <span class="score-value" id="overall-score">0.0</span>
+                            <span class="total">/10</span>
+                        </div>
+                        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1rem;" id="score-summary">
+                            Enter a prompt to see your score.
+                        </p>
+                        <div id="radar-chart-container">
+                            <canvas id="radar-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Dimension Cards -->
+                    <div>
+                        <h3 style="font-size: 1.3rem; margin-bottom: 1.5rem; padding-left: 0.5rem;">📊 Dimension Breakdown</h3>
+                        <div class="dimensions-grid" id="dimensions-grid">
+                            <!-- Populated by JS -->
+                        </div>
+
+                        <!-- Strengths & Weaknesses -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem;">
+                            <div class="glass-panel" style="padding: 1.5rem;">
+                                <h4 style="color: var(--success); margin-bottom: 1rem;">💪 Strengths</h4>
+                                <ul id="strengths-list" style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                                </ul>
+                            </div>
+                            <div class="glass-panel" style="padding: 1.5rem;">
+                                <h4 style="color: var(--warning); margin-bottom: 1rem;">⚠️ Weaknesses</h4>
+                                <ul id="weaknesses-list" style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== IMPROVED PROMPT SECTION ===== -->
+            <section id="improved-section" class="glass-panel hidden">
+                <div class="section-header">
+                    <h2 style="font-size: 1.4rem; margin: 0;">✨ Improved Prompt</h2>
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button id="copy-improved-btn" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">📋 Copy</button>
+                        <button id="compare-btn" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">⚡ Compare Side by Side</button>
+                    </div>
+                </div>
+
+                <div class="prompt-block" id="improved-prompt-text">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Changes Made -->
+                <div style="margin-top: 2rem;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--accent-cyan-light);">🔧 Changes Applied</h3>
+                    <div id="changes-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Expected Improvement -->
+                <div style="margin-top: 1.5rem; padding: 1rem 1.5rem; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md);">
+                    <h4 style="color: var(--success); margin-bottom: 0.5rem; font-size: 0.95rem;">📈 Expected Improvement</h4>
+                    <p id="expected-improvement" style="color: var(--text-secondary); font-size: 0.9rem;"></p>
+                </div>
+            </section>
+
+            <!-- ===== COMPARISON SECTION ===== -->
+            <section id="comparison-section" class="glass-panel hidden">
+                <h2 style="font-size: 1.4rem; margin-bottom: 1.5rem;">⚖️ Side-by-Side Comparison</h2>
+
+                <div class="comparison-grid">
+                    <div class="comparison-col">
+                        <h3>Original Prompt Output</h3>
+                        <div class="prompt-block" id="original-output">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    <div class="comparison-col">
+                        <h3 style="color: var(--accent-cyan-light);">Improved Prompt Output</h3>
+                        <div class="prompt-block" id="improved-output" style="border-color: rgba(34, 211, 238, 0.2);">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Analysis -->
+                <div style="margin-top: 2rem; padding: 1rem 1.5rem; background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(124, 58, 237, 0.2); border-radius: var(--radius-md);">
+                    <h4 style="color: var(--accent-purple-light); margin-bottom: 0.5rem; font-size: 0.95rem;">🔎 Analysis</h4>
+                    <p id="comparison-analysis" style="color: var(--text-secondary); font-size: 0.9rem;"></p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- ========== HISTORY SIDEBAR ========== -->
+    <aside id="history-sidebar">
+        <div class="history-header">
+            <h3 style="margin: 0;">📜 Analysis History</h3>
+            <button class="close-sidebar-btn" id="close-sidebar-btn">&times;</button>
+        </div>
+        <div class="history-list" id="history-list">
+            <p style="color: var(--text-muted); text-align: center;">No history yet.</p>
+        </div>
+        <button id="clear-history-btn" class="btn btn-secondary" style="width: 100%; font-size: 0.85rem;">🗑️ Clear History</button>
+    </aside>
+
+    <!-- ========== FOOTER ========== -->
+    <footer>
+        <div class="container">
+            <p>Prompt Engineering Lab — Built with ❤️ using the Gemini API</p>
+            <p style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-muted);">
+                An NLP project demonstrating prompt analysis, optimization, and comparison
+            </p>
+        </div>
+    </footer>
+
+    <!-- ========== SCRIPTS ========== -->
+    <!-- Load order matters: config → api → chart → app -->
+    <script src="config/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>
